@@ -37,11 +37,23 @@
     }
     #difficulty-screen h2 { margin: 0 0 16px; }
     .difficulty-buttons { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    #timer { position: fixed; top: 20px; right: 20px; font-size: 24px; font-weight: bold; }
+    .game-status {
+      position: fixed; top: 20px; right: 20px; display: flex; gap: 16px;
+      align-items: center; font-size: 20px; font-weight: bold;
+    }
     #game-container {
       display: grid; gap: 4px; width: min(80vw, 60vh, 500px); aspect-ratio: 1;
     }
-    .game-cell { border: 1px solid #aab4c1; min-width: 0; min-height: 0; }
+    .game-cell {
+      border: 1px solid #aab4c1; border-radius: 6px; padding: 0;
+      min-width: 0; min-height: 0; background: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(28px, 7vmin, 64px);
+    }
+    .game-cell:hover { background-color: #f0f6ff; }
+    @media (max-width: 480px) {
+      .game-status { top: 70px; font-size: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -68,7 +80,10 @@
 
   <div id="game-screen">
     <button type="button" id="back-to-ready" class="back-button">뒤로가기</button>
-    <div id="timer" role="timer" aria-label="남은 시간">00:00</div>
+    <div class="game-status">
+      <div id="lives" aria-live="polite">남은 목숨: 3개</div>
+      <div id="timer" role="timer" aria-label="남은 시간">00:00</div>
+    </div>
     <div id="game-container" aria-label="게임 격자"></div>
   </div>
 
@@ -79,13 +94,17 @@
     const gameScreen = document.getElementById("game-screen");
     const gameContainer = document.getElementById("game-container");
     const timer = document.getElementById("timer");
+    const livesDisplay = document.getElementById("lives");
     const settings = {
-      "하": { size: 3, seconds: 180 },
-      "중": { size: 4, seconds: 120 },
-      "상": { size: 5, seconds: 60 }
+      "하": { size: 3, seconds: 180, normal: "🍎", odd: "🍏" },
+      "중": { size: 4, seconds: 120, normal: "🐶", odd: "🐕" },
+      "상": { size: 5, seconds: 60, normal: "🏠", odd: "🏡" }
     };
     let selectedLevel = null;
     let timerId = null;
+    let lives = 3;
+    let gameActive = false;
+    let endTime = 0;
 
     function showScreen(screen) {
       [mainScreen, difficultyScreen, readyScreen, gameScreen].forEach(function (item) {
@@ -104,25 +123,58 @@
       timer.textContent = minutes + ":" + remainingSeconds;
     }
 
+    function finishGame(message) {
+      if (!gameActive) return;
+      gameActive = false;
+      stopTimer();
+      alert(message);
+      selectedLevel = null;
+      showScreen(mainScreen);
+    }
+
     function startGame() {
       const config = settings[selectedLevel];
       if (!config) return;
       stopTimer();
+      lives = 3;
+      gameActive = true;
+      livesDisplay.textContent = "남은 목숨: " + lives + "개";
       gameContainer.replaceChildren();
       gameContainer.style.gridTemplateColumns = `repeat(${config.size}, 1fr)`;
       gameContainer.style.gridTemplateRows = `repeat(${config.size}, 1fr)`;
+      const answerIndex = Math.floor(Math.random() * config.size * config.size);
       for (let i = 0; i < config.size * config.size; i++) {
-        const cell = document.createElement("div");
+        const cell = document.createElement("button");
+        cell.type = "button";
         cell.className = "game-cell";
+        cell.textContent = i === answerIndex ? config.odd : config.normal;
+        cell.setAttribute("aria-label", (i + 1) + "번 칸");
+        cell.addEventListener("click", function () {
+          if (!gameActive) return;
+          if (Date.now() >= endTime) {
+            displayTime(0);
+            finishGame("시간 종료! 게임 오버");
+          } else if (i === answerIndex) {
+            finishGame("성공!");
+          } else {
+            lives--;
+            livesDisplay.textContent = "남은 목숨: " + lives + "개";
+            if (lives === 0) {
+              finishGame("게임 오버");
+            } else {
+              alert("다시 찾아보세요");
+            }
+          }
+        });
         gameContainer.appendChild(cell);
       }
       showScreen(gameScreen);
-      const endTime = Date.now() + config.seconds * 1000;
+      endTime = Date.now() + config.seconds * 1000;
       displayTime(config.seconds);
       timerId = setInterval(function () {
         const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
         displayTime(remaining);
-        if (remaining === 0) stopTimer();
+        if (remaining === 0) finishGame("시간 종료! 게임 오버");
       }, 1000);
     }
 
@@ -144,6 +196,7 @@
       showScreen(difficultyScreen);
     });
     document.getElementById("back-to-ready").addEventListener("click", function () {
+      gameActive = false;
       stopTimer();
       showScreen(readyScreen);
     });
