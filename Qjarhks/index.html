@@ -41,8 +41,11 @@
       position: fixed; top: 20px; right: 20px; display: flex; gap: 16px;
       align-items: center; font-size: 20px; font-weight: bold;
     }
+    .grid-scroll {
+      width: 100%; overflow-x: auto; padding: 4px 0;
+    }
     #game-container {
-      display: grid; gap: 4px; width: min(80vw, 60vh, 500px); aspect-ratio: 1;
+      display: grid; gap: 4px; margin: 0 auto; aspect-ratio: 1;
     }
     .game-cell {
       border: 1px solid #aab4c1; border-radius: 6px; padding: 0;
@@ -54,6 +57,7 @@
     .game-cell.odd { background-position: right center; }
     @media (max-width: 480px) {
       .game-status { top: 70px; font-size: 16px; }
+      #game-screen { padding-top: 112px; }
     }
   </style>
 </head>
@@ -85,7 +89,9 @@
       <div id="lives" aria-live="polite">남은 목숨: 3개</div>
       <div id="timer" role="timer" aria-label="남은 시간">00:00</div>
     </div>
-    <div id="game-container" aria-label="게임 격자"></div>
+    <div class="grid-scroll" role="region" aria-label="게임 격자 스크롤" tabindex="0">
+      <div id="game-container" aria-label="게임 격자"></div>
+    </div>
   </div>
 
   <script>
@@ -143,6 +149,8 @@
       gameContainer.replaceChildren();
       gameContainer.style.gridTemplateColumns = `repeat(${config.size}, 1fr)`;
       gameContainer.style.gridTemplateRows = `repeat(${config.size}, 1fr)`;
+      // 칸 하나를 140px로 유지하고, 칸 사이 간격도 더합니다.
+      gameContainer.style.width = (config.size * 140 + (config.size - 1) * 4) + "px";
       const answerIndex = Math.floor(Math.random() * config.size * config.size);
       for (let i = 0; i < config.size * config.size; i++) {
         const cell = document.createElement("button");
