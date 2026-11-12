@@ -48,9 +48,10 @@
       border: 1px solid #aab4c1; border-radius: 6px; padding: 0;
       min-width: 0; min-height: 0; background: #ffffff;
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(28px, 7vmin, 64px);
+      background-size: 200% 100%; background-repeat: no-repeat;
+      background-position: left center;
     }
-    .game-cell:hover { background-color: #f0f6ff; }
+    .game-cell.odd { background-position: right center; }
     @media (max-width: 480px) {
       .game-status { top: 70px; font-size: 16px; }
     }
@@ -96,9 +97,9 @@
     const timer = document.getElementById("timer");
     const livesDisplay = document.getElementById("lives");
     const settings = {
-      "하": { size: 3, seconds: 180, normal: "🍎", odd: "🍏" },
-      "중": { size: 4, seconds: 120, normal: "🐶", odd: "🐕" },
-      "상": { size: 5, seconds: 60, normal: "🏠", odd: "🏡" }
+      "하": { size: 3, seconds: 180, image: "images/apple.png" },
+      "중": { size: 4, seconds: 120, image: "images/dog.png" },
+      "상": { size: 5, seconds: 60, image: "images/house.png" }
     };
     let selectedLevel = null;
     let timerId = null;
@@ -147,7 +148,8 @@
         const cell = document.createElement("button");
         cell.type = "button";
         cell.className = "game-cell";
-        cell.textContent = i === answerIndex ? config.odd : config.normal;
+        cell.style.backgroundImage = `url("${config.image}")`;
+        if (i === answerIndex) cell.classList.add("odd");
         cell.setAttribute("aria-label", (i + 1) + "번 칸");
         cell.addEventListener("click", function () {
           if (!gameActive) return;
