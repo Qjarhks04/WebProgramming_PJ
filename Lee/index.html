@@ -136,7 +136,7 @@
   const levels = [
     { count: 3, swaps: 4, duration: 700 },
     { count: 5, swaps: 7, duration: 500 },
-    { count: 10, swaps: 20, duration: 12, pairs: 3 }
+    { count: 10, swaps: 20, duration: 12, pairs: 3, shuffleTime: 3000 }
   ];
   const state = { level: 0, lives: 3, target: 0, orbs: [], accepting: false, round: 0 };
   const screens = document.querySelectorAll('.screen');
@@ -241,8 +241,9 @@
     await sleep(350);
     if (token !== state.round) return;
     setStatus('수정구가 섞이고 있어요. 눈을 떼지 마세요!');
-    const { swaps, duration, pairs = 1 } = levels[state.level];
-    for (let n = 0; n < swaps; n++) {
+    const { swaps, duration, pairs = 1, shuffleTime = 0 } = levels[state.level];
+    const shuffleEnd = performance.now() + shuffleTime;
+    for (let n = 0; shuffleTime ? performance.now() < shuffleEnd : n < swaps; n++) {
       // 각 구체는 한 번의 셔플에서 한 쌍에만 속합니다.
       const choices = [...state.orbs];
       for (let i = choices.length - 1; i > 0; i--) {
@@ -296,6 +297,7 @@
 </script>
 </body>
 </html>
+
 
 
 
