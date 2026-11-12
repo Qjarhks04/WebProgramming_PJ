@@ -100,9 +100,9 @@
     if (!event.target.closest('#start')) startBgm();
   }, { once: true });
   const cutscenes = {
-    2: { image: 'cutscene-1.jpg', text: '실수하지 말라고 소년' },
-    1: { image: 'cutscene-2.jpg', text: '이제 한 목숨 남았으니 조심하는게 좋을거야 BOY~' },
-    0: { image: 'cutscene-3.jpg', text: 'Hey~ Boy~ 조심하라고 했지~ 일로와' }
+    2: { image: 'cutscene-1.jpg', voice: 'voice-1.m4a', text: '실수하지 말라고 소년' },
+    1: { image: 'cutscene-2.jpg', voice: 'voice-2.m4a', text: '이제 한 목숨 남았으니 조심하는게 좋을거야 BOY~' },
+    0: { image: 'cutscene-3.jpg', voice: 'voice-3.m4a', text: 'Hey~ Boy~ 조심하라고 했지~ 일로와' }
   };
   async function showCutscene(lives) {
     const overlay = document.getElementById('cutscene');
@@ -117,7 +117,15 @@
     await new Promise(requestAnimationFrame);
     await new Promise(requestAnimationFrame);
     overlay.classList.add('visible');
-    await sleep(2600);
+    const voice = new Audio(cutscenes[lives].voice);
+    const voiceFinished = new Promise(resolve => {
+      voice.onended = resolve;
+      voice.onerror = resolve;
+      voice.play().catch(resolve);
+      setTimeout(resolve, 12000);
+    });
+    await Promise.all([sleep(2600), voiceFinished]);
+    voice.pause();
     overlay.classList.remove('visible');
     await sleep(650);
     overlay.hidden = true;
@@ -239,6 +247,7 @@
 </script>
 </body>
 </html>
+
 
 
 
