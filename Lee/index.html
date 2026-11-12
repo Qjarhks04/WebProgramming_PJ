@@ -33,6 +33,8 @@
   /* 수정구 이미지 파일을 교체하려면 아래 crystal-orb.png 경로를 변경하세요. */
   .orb { position: absolute; left: 0; top: 0; width: var(--orb-size); height: var(--orb-size); border-radius: 50%; border: 1px solid #e2c7ff; cursor: pointer; color: #fff; font: inherit; font-weight: bold; background: transparent url("crystal-orb.png") center / contain no-repeat; box-shadow: inset -8px -10px 18px #140c4988, 0 0 20px #a77bff99; transition: transform var(--duration, 0ms) ease-in-out, opacity .5s ease; will-change: transform; }
   .orb:disabled { cursor: default; }
+  .orb.selected { animation: orb-tap .3s ease-out; }
+  @keyframes orb-tap { 0% { scale: 1; filter: brightness(1); } 40% { scale: .92; filter: brightness(1.3); box-shadow: 0 0 24px #e5dcffbb; } 100% { scale: 1; filter: brightness(1); } }
   .orb.target { box-shadow: inset -8px -10px 18px #140c4988, 0 0 0 4px #ffdc94, 0 0 30px #ffc962; }
   .orb.target::after { content: '✦'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff3bd; font-size: 1.7rem; text-shadow: 0 0 10px #fff; }
   .bgm-frame { position: fixed; width: 200px; height: 200px; left: -10000px; top: 0; border: 0; }
@@ -41,18 +43,19 @@
   .cutscene::before { content: ''; position: absolute; z-index: -2; inset: -30px; background: var(--scene-bg) center / cover no-repeat; filter: blur(20px) brightness(.35); transform: scale(1.1); }
   .cutscene::after { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, #10092b88, #08051bcc); }
   .cutscene[hidden] { display: none; }
-  .cutscene-card { width: min(90vw, 480px); padding: 18px; text-align: center; background: #171035b8; border: 1px solid #a784d2; border-radius: 18px; box-shadow: 0 0 38px #a77bff55; opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .8s ease, transform .8s ease; }
+  .cutscene-card { width: min(90vw, 480px); padding: 18px; text-align: center; background: transparent; border: 0; box-shadow: none; opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .8s ease, transform .8s ease; }
   .cutscene.visible .cutscene-card { opacity: 1; transform: translateY(0) scale(1); }
-  .cutscene-card img { display: block; width: 100%; max-height: 55vh; object-fit: contain; border-radius: 12px; margin-bottom: 18px; }
-  .cutscene-card p { font-size: 1.25rem; font-weight: bold; }
+  .cutscene-card img { display: block; width: 100%; max-height: 55vh; object-fit: contain; margin-bottom: 18px; -webkit-mask-image: radial-gradient(ellipse 74% 75% at center, #000 54%, transparent 100%); mask-image: radial-gradient(ellipse 74% 75% at center, #000 54%, transparent 100%); }
+  .cutscene-card p { font-size: 1.25rem; font-weight: bold; text-shadow: 0 2px 12px #000, 0 0 20px #000; }
   #game-over { isolation: isolate; overflow: hidden; }
   #game-over-image { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: final-zoom 5s ease-out forwards; }
   #game-over::before { content: ''; position: absolute; z-index: -1; inset: 0; background: #08031b99; }
-  #game-over h1 { font-size: clamp(3rem, 11vw, 7rem); color: #fff; text-shadow: 0 0 22px #d165ff; }
+  #game-over .menu-button { background: #ffffff1a; border: 1px solid #ffffff80; color: white; backdrop-filter: blur(6px); text-shadow: 0 1px 5px #000; }
+  #game-over .menu-button:hover { background: #ffffff38; }
   @keyframes final-zoom { from { transform: scale(1); } to { transform: scale(1.3); } }
   .hint { color: #c5b4e5; font-size: .9rem; }
   @media (max-width: 500px) { .screen { padding: 18px; } .character { height: 160px; } .board { height: 190px; } }
-  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before, #game-over-image { animation: none; } .cutscene, .cutscene-card { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before, #game-over-image, .orb.selected { animation: none; } .cutscene, .cutscene-card { transition: none; } }
 </style>
 </head>
 <body>
@@ -74,7 +77,7 @@
     <p class="hint">빛나는 수정구를 기억하고 셔플이 끝나면 선택하세요.</p>
   </div>
 </section>
-<section id="game-over" class="screen center" hidden><img id="game-over-image" src="cutscene-4.jpg" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true"><h1>GAME OVER</h1><p>목숨을 모두 잃었어요.</p><button class="primary restart" type="button">다시 시작</button></section>
+<section id="game-over" class="screen center" hidden><img id="game-over-image" src="cutscene-4.jpg" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true"><button id="back-to-main" class="primary menu-button" type="button">시작화면</button></section>
 <section id="victory" class="screen center" hidden><h1>게임 클리어 ✦</h1><p>모든 별빛 수정구를 찾았어요!</p><button class="primary restart" type="button">다시 시작</button></section>
 <div id="cutscene" class="cutscene" hidden role="dialog" aria-modal="true" aria-labelledby="cutscene-text">
   <div class="cutscene-card"><img id="cutscene-image" alt="실패 컷신" referrerpolicy="no-referrer"><p id="cutscene-text"></p></div>
@@ -216,6 +219,8 @@
     if (!state.accepting) return;
     state.accepting = false;
     state.orbs.forEach(item => { item.el.disabled = true; });
+    orb.el.classList.add('selected');
+    await sleep(300);
     if (orb.id === state.target) {
       if (state.level === levels.length - 1) { showScreen('victory'); return; }
       state.level++; runRound('정답! 다음 단계입니다.');
@@ -228,9 +233,11 @@
   }
   function startGame() { state.level = 0; state.lives = 3; showScreen('game-screen'); runRound(); }
   document.getElementById('start').addEventListener('click', startGame);
+  document.getElementById('back-to-main').addEventListener('click', () => { showScreen('main-screen'); startBgm(); });
   document.querySelectorAll('.restart').forEach(button => button.addEventListener('click', startGame));
   window.addEventListener('resize', () => { if (state.accepting) renderPositions(); });
 </script>
 </body>
 </html>
+
 
