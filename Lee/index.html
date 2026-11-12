@@ -1,120 +1,171 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>야바위 게임</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: sans-serif; background: #171717; color: white; }
-    .screen { min-height: 100vh; padding: 24px; }
-    .screen[hidden] { display: none; }
-    .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
-    button { padding: 12px 20px; border: 0; border-radius: 8px; font: inherit; cursor: pointer; }
-    button:focus-visible { outline: 3px solid #ffd166; outline-offset: 4px; }
-    .game-header { display: flex; justify-content: space-between; gap: 16px; max-width: 800px; margin: 0 auto; }
-    .game-content { max-width: 800px; margin: 10vh auto 0; text-align: center; }
-    .game-video { display: block; width: min(100%, 480px); max-height: 40vh; margin: 0 auto 24px; object-fit: contain; }
-    .cups { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 32px 0; }
-    .cup { width: 80px; height: 90px; background: #b77940; color: white; font-size: 1.4rem; }
-    .cup:hover { background: #d59455; }
-    #message { min-height: 1.5em; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아디나의 별빛 야바위</title>
+<style>
+  * { box-sizing: border-box; }
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; color: #f5edff; background: radial-gradient(circle at 50% 12%, #4b2d78 0, #1a1646 40%, #090c25 100%); }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .55; background-image: radial-gradient(2px 2px at 15% 20%, white 50%, transparent 70%), radial-gradient(2px 2px at 73% 30%, #d9c4ff 50%, transparent 70%), radial-gradient(1px 1px at 42% 72%, white 50%, transparent 70%); background-size: 230px 220px, 300px 270px, 180px 190px; }
+  .screen { position: relative; min-height: 100vh; padding: 24px; }
+  .screen[hidden] { display: none; }
+  .center { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }
+  h1, p { margin: 0; }
+  h1 { letter-spacing: .04em; }
+  .primary { border: 1px solid #d8b8ff; border-radius: 999px; background: #6941a0; color: white; padding: 13px 28px; font: inherit; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #ffdc94; outline-offset: 4px; }
+  .header { max-width: 900px; margin: auto; display: flex; justify-content: space-between; gap: 12px; color: #e4d4ff; }
+  .game-content { width: min(900px, 100%); margin: 24px auto 0; text-align: center; }
+  .character { width: min(100%, 320px); height: 200px; margin: 0 auto 18px; display: grid; place-items: center; overflow: hidden; border: 1px solid #a784d2; border-radius: 24px; background: #16102f; box-shadow: 0 0 35px #a775e955; }
+  .character video { width: 100%; height: 100%; object-fit: contain; }
+  /* 캐릭터 이미지를 쓰려면 위 video를 img로 바꾸고 경로를 지정하세요. */
+  .character.swallow { animation: glow .65s ease-in-out; }
+  @keyframes glow { 50% { box-shadow: 0 0 60px 15px #e5c0ff99; transform: scale(1.03); } }
+  #message { min-height: 3em; margin: 14px 0 0; color: #e5d5fa; }
+  .board { position: relative; width: 100%; height: 220px; margin: 0 auto; }
+  /* 실제 수정구 이미지는 .orb의 background를 url('이미지경로') center/contain no-repeat로 교체하세요. */
+  .orb { position: absolute; left: 0; top: 0; width: var(--orb-size); height: var(--orb-size); border-radius: 50%; border: 1px solid #e2c7ff; cursor: pointer; color: #fff; font: inherit; font-weight: bold; background: radial-gradient(circle at 32% 25%, #fff, #d5baffbb 12%, #986bdfbb 34%, #473390dd 66%, #251e60 100%); box-shadow: inset -8px -10px 18px #140c4988, 0 0 20px #a77bff99; transition: transform var(--duration, 0ms) ease-in-out, opacity .5s ease; will-change: transform; }
+  .orb:disabled { cursor: default; }
+  .orb.target { box-shadow: inset -8px -10px 18px #140c4988, 0 0 0 4px #ffdc94, 0 0 30px #ffc962; }
+  .orb.target::after { content: '✦'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff3bd; font-size: 1.7rem; text-shadow: 0 0 10px #fff; }
+  .hint { color: #c5b4e5; font-size: .9rem; }
+  @media (max-width: 500px) { .screen { padding: 18px; } .character { height: 160px; } .board { height: 190px; } }
+  @media (prefers-reduced-motion: reduce) { .character.swallow { animation: none; } }
+</style>
 </head>
 <body>
-  <!-- 나중에 이 화면에 동영상 배경을 추가할 수 있습니다. -->
-  <main id="main-screen" class="screen center">
-    <button id="start-button" type="button">계속하기</button>
-  </main>
-
-  <section id="game-screen" class="screen" hidden aria-label="게임 화면">
-    <header class="game-header">
-      <strong id="stage-display"></strong>
-      <strong id="lives-display"></strong>
-    </header>
-    <div class="game-content">
-      <video class="game-video" autoplay loop muted playsinline aria-label="아디나 영상">
-        <source src="adina.mp4" type="video/mp4">
-        브라우저에서 영상을 재생할 수 없습니다.
-      </video>
-      <h1>공이 숨은 컵을 찾아보세요!</h1>
-      <p id="message" role="status" aria-live="polite"></p>
-      <div id="cups" class="cups" aria-label="컵 선택"></div>
+<main id="main-screen" class="screen center">
+  <p>✦ 별들의 운명을 따라 ✦</p><h1>아디나의 별빛 야바위</h1>
+  <p>빛나는 수정구의 움직임을 지켜보세요.</p>
+  <button class="primary" id="start" type="button">계속하기</button>
+</main>
+<section id="game-screen" class="screen" hidden aria-label="게임 화면">
+  <header class="header"><strong id="stage"></strong><strong id="lives"></strong></header>
+  <div class="game-content">
+    <div class="character" id="character" aria-label="아디나 캐릭터 영역">
+      <video src="adina.mp4" autoplay loop muted playsinline aria-label="아디나 영상"></video>
     </div>
-  </section>
+    <h1>별빛 수정구를 찾아보세요</h1>
+    <p id="message" role="status" aria-live="polite"></p>
+    <div id="board" class="board" aria-label="수정구 선택"></div>
+    <p class="hint">빛나는 수정구를 기억하고 셔플이 끝나면 선택하세요.</p>
+  </div>
+</section>
+<section id="game-over" class="screen center" hidden><h1>게임 오버</h1><p>목숨을 모두 잃었어요.</p><button class="primary restart" type="button">다시 시작</button></section>
+<section id="victory" class="screen center" hidden><h1>게임 클리어 ✦</h1><p>모든 별빛 수정구를 찾았어요!</p><button class="primary restart" type="button">다시 시작</button></section>
+<script>
+  // 단계별 수정구 수, 섞는 횟수, 한 번 교차하는 시간(ms).
+  const levels = [
+    { count: 3, swaps: 4, duration: 700 },
+    { count: 5, swaps: 7, duration: 500 },
+    { count: 10, swaps: 11, duration: 320 }
+  ];
+  const state = { level: 0, lives: 3, target: 0, orbs: [], accepting: false, round: 0 };
+  const screens = document.querySelectorAll('.screen');
+  const board = document.getElementById('board');
+  const character = document.getElementById('character');
+  const message = document.getElementById('message');
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  <section id="game-over-screen" class="screen center" hidden>
-    <h1>게임 오버</h1>
-    <p>목숨을 모두 잃었습니다.</p>
-    <button id="restart-button" type="button">다시 시작</button>
-  </section>
-
-  <section id="victory-screen" class="screen center" hidden>
-    <h1>게임 클리어!</h1>
-    <p>모든 단계를 통과했습니다.</p>
-    <button id="play-again-button" type="button">다시 시작</button>
-  </section>
-
-  <script>
-    const cupCounts = [3, 5, 10];
-    const initialLives = 3;
-    const state = { stage: 0, lives: initialLives, answer: 0 };
-    const screens = document.querySelectorAll('.screen');
-    const stageDisplay = document.getElementById('stage-display');
-    const livesDisplay = document.getElementById('lives-display');
-    const message = document.getElementById('message');
-    const cups = document.getElementById('cups');
-
-    function showScreen(id) {
-      screens.forEach(screen => { screen.hidden = screen.id !== id; });
+  function showScreen(id) { screens.forEach(screen => { screen.hidden = screen.id !== id; }); }
+  function setStatus(text) { message.textContent = text; }
+  function updateHeader() {
+    document.getElementById('stage').textContent = `${state.level + 1}단계`;
+    document.getElementById('lives').textContent = `남은 목숨: ${state.lives}개`;
+  }
+  // 한 행에 최대 다섯 개씩 배치해 모바일에서도 수정구가 겹치지 않습니다.
+  function position(slot, count) {
+    const cols = Math.min(count, 5);
+    const rows = Math.ceil(count / cols);
+    const width = board.clientWidth;
+    const size = Math.min(72, (width - (cols - 1) * 10) / cols);
+    const row = Math.floor(slot / cols), col = slot % cols;
+    const inRow = Math.min(cols, count - row * cols);
+    const gap = Math.min(24, Math.max(10, (width - inRow * size) / Math.max(1, inRow - 1)));
+    const rowWidth = inRow * size + (inRow - 1) * gap;
+    const x = (width - rowWidth) / 2 + col * (size + gap);
+    const y = row * (size + 16) + (rows === 1 ? 30 : 5);
+    return { x, y, size };
+  }
+  function place(orb, duration = 0, lane = 0) {
+    const p = position(orb.slot, state.orbs.length);
+    orb.el.style.setProperty('--orb-size', `${p.size}px`);
+    orb.el.style.setProperty('--duration', `${duration}ms`);
+    orb.el.style.transform = `translate(${p.x}px, ${p.y + lane}px)`;
+  }
+  function renderPositions() { state.orbs.forEach(orb => place(orb)); }
+  function createOrbs() {
+    board.replaceChildren(); state.orbs = [];
+    const count = levels[state.level].count;
+    state.target = Math.floor(Math.random() * count);
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('button');
+      el.type = 'button'; el.className = 'orb'; el.disabled = true;
+      el.setAttribute('aria-label', `수정구 ${i + 1}`);
+      const orb = { id: i, slot: i, el };
+      el.addEventListener('click', () => choose(orb));
+      board.appendChild(el); state.orbs.push(orb);
     }
-
-    function prepareRound(feedback = '컵 하나를 선택하세요.') {
-      const count = cupCounts[state.stage];
-      state.answer = Math.floor(Math.random() * count);
-      stageDisplay.textContent = `${state.stage + 1}단계`;
-      livesDisplay.textContent = `남은 목숨: ${state.lives}개`;
-      message.textContent = feedback;
-      cups.replaceChildren();
-      for (let i = 0; i < count; i++) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'cup';
-        button.textContent = '🥤';
-        button.setAttribute('aria-label', `${i + 1}번 컵`);
-        button.addEventListener('click', () => chooseCup(i));
-        cups.appendChild(button);
-      }
+    renderPositions();
+  }
+  async function runRound(feedback = '') {
+    const token = ++state.round;
+    state.accepting = false; updateHeader(); createOrbs();
+    const target = state.orbs[state.target];
+    target.el.classList.add('target');
+    setStatus(`${feedback} 빛나는 수정구를 기억하세요.`.trim());
+    await sleep(1400);
+    if (token !== state.round) return;
+    // 정답 수정구의 빛이 아디나에게 흡수되는 연출. 수정구 자체는 다시 나타나 섞입니다.
+    setStatus('아디나가 별빛을 삼키고 있어요…');
+    const orbRect = target.el.getBoundingClientRect();
+    const charRect = character.getBoundingClientRect();
+    const p = position(target.slot, state.orbs.length);
+    target.el.style.setProperty('--duration', '650ms');
+    target.el.style.transform = `translate(${p.x + charRect.left + charRect.width / 2 - (orbRect.left + orbRect.width / 2)}px, ${p.y + charRect.top + charRect.height / 2 - (orbRect.top + orbRect.height / 2)}px) scale(.15)`;
+    target.el.style.opacity = '0'; character.classList.add('swallow');
+    await sleep(700);
+    if (token !== state.round) return;
+    character.classList.remove('swallow'); target.el.classList.remove('target');
+    place(target); target.el.style.opacity = '1';
+    await sleep(350);
+    if (token !== state.round) return;
+    setStatus('수정구가 섞이고 있어요. 눈을 떼지 마세요!');
+    const { swaps, duration } = levels[state.level];
+    for (let n = 0; n < swaps; n++) {
+      const a = Math.floor(Math.random() * state.orbs.length);
+      let b = Math.floor(Math.random() * (state.orbs.length - 1));
+      if (b >= a) b++;
+      const first = state.orbs[a], second = state.orbs[b];
+      [first.slot, second.slot] = [second.slot, first.slot];
+      // 서로 다른 깊이로 교차하도록 그림자 순서를 번갈아 바꿉니다.
+      first.el.style.zIndex = n % 2 ? '1' : '2'; second.el.style.zIndex = n % 2 ? '2' : '1';
+      place(first, duration); place(second, duration);
+      await sleep(duration + 50);
+      if (token !== state.round) return;
     }
-
-    function chooseCup(index) {
-      if (index === state.answer) {
-        if (state.stage === cupCounts.length - 1) {
-          showScreen('victory-screen');
-        } else {
-          state.stage++;
-          prepareRound('정답입니다! 다음 단계의 컵을 선택하세요.');
-        }
-      } else {
-        state.lives--;
-        if (state.lives === 0) {
-          showScreen('game-over-screen');
-        } else {
-          prepareRound('틀렸습니다. 같은 단계에서 다시 시도하세요.');
-        }
-      }
+    state.orbs.forEach(orb => { orb.el.disabled = false; });
+    state.accepting = true; setStatus('별빛이 담긴 수정구를 선택하세요!');
+  }
+  function choose(orb) {
+    if (!state.accepting) return;
+    state.accepting = false;
+    state.orbs.forEach(item => { item.el.disabled = true; });
+    if (orb.id === state.target) {
+      if (state.level === levels.length - 1) { showScreen('victory'); return; }
+      state.level++; runRound('정답! 다음 단계입니다.');
+    } else {
+      state.lives--; updateHeader();
+      if (state.lives === 0) { showScreen('game-over'); return; }
+      runRound('아쉬워요! 같은 단계에서 다시 도전합니다.');
     }
-
-    function startGame() {
-      state.stage = 0;
-      state.lives = initialLives;
-      prepareRound();
-      showScreen('game-screen');
-    }
-
-    document.getElementById('start-button').addEventListener('click', startGame);
-    document.getElementById('restart-button').addEventListener('click', startGame);
-    document.getElementById('play-again-button').addEventListener('click', startGame);
-  </script>
+  }
+  function startGame() { state.level = 0; state.lives = 3; showScreen('game-screen'); runRound(); }
+  document.getElementById('start').addEventListener('click', startGame);
+  document.querySelectorAll('.restart').forEach(button => button.addEventListener('click', startGame));
+  window.addEventListener('resize', () => { if (state.accepting) renderPositions(); });
+</script>
 </body>
 </html>
