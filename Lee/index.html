@@ -35,15 +35,28 @@
   .orb:disabled { cursor: default; }
   .orb.target { box-shadow: inset -8px -10px 18px #140c4988, 0 0 0 4px #ffdc94, 0 0 30px #ffc962; }
   .orb.target::after { content: '✦'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff3bd; font-size: 1.7rem; text-shadow: 0 0 10px #fff; }
+  .bgm-frame { position: fixed; width: 200px; height: 200px; left: -10000px; top: 0; border: 0; }
+  .cutscene { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: #050416df; }
+  .cutscene[hidden] { display: none; }
+  .cutscene-card { width: min(90vw, 480px); padding: 18px; text-align: center; background: #171035; border: 1px solid #a784d2; border-radius: 18px; box-shadow: 0 0 38px #a77bff55; }
+  .cutscene-card img { display: block; width: 100%; max-height: 55vh; object-fit: contain; border-radius: 12px; margin-bottom: 18px; }
+  .cutscene-card p { font-size: 1.25rem; font-weight: bold; }
+  #game-over { isolation: isolate; overflow: hidden; }
+  #game-over-image { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: final-zoom 5s ease-out forwards; }
+  #game-over::before { content: ''; position: absolute; z-index: -1; inset: 0; background: #08031b99; }
+  #game-over h1 { font-size: clamp(3rem, 11vw, 7rem); color: #fff; text-shadow: 0 0 22px #d165ff; }
+  @keyframes final-zoom { from { transform: scale(1); } to { transform: scale(1.3); } }
   .hint { color: #c5b4e5; font-size: .9rem; }
   @media (max-width: 500px) { .screen { padding: 18px; } .character { height: 160px; } .board { height: 190px; } }
-  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before, #game-over-image { animation: none; } }
 </style>
 </head>
 <body>
 <main id="main-screen" class="screen center">
   <p>✦ 별들의 운명을 따라 ✦</p><h1>아디나의 별빛 야바위</h1>
   <p>빛나는 수정구의 움직임을 지켜보세요.</p>
+  <button class="primary" id="bgm-button" type="button" aria-pressed="false">BGM 켜기</button>
+  <div id="bgm-player"></div>
   <button class="primary" id="start" type="button">계속하기</button>
 </main>
 <section id="game-screen" class="screen" hidden aria-label="게임 화면">
@@ -58,14 +71,45 @@
     <p class="hint">빛나는 수정구를 기억하고 셔플이 끝나면 선택하세요.</p>
   </div>
 </section>
-<section id="game-over" class="screen center" hidden><h1>게임 오버</h1><p>목숨을 모두 잃었어요.</p><button class="primary restart" type="button">다시 시작</button></section>
+<section id="game-over" class="screen center" hidden><img id="game-over-image" src="cutscene-final.png" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true"><h1>GAME OVER</h1><p>목숨을 모두 잃었어요.</p><button class="primary restart" type="button">다시 시작</button></section>
 <section id="victory" class="screen center" hidden><h1>게임 클리어 ✦</h1><p>모든 별빛 수정구를 찾았어요!</p><button class="primary restart" type="button">다시 시작</button></section>
+<div id="cutscene" class="cutscene" hidden role="dialog" aria-modal="true" aria-labelledby="cutscene-text">
+  <div class="cutscene-card"><img id="cutscene-image" alt="실패 컷신" referrerpolicy="no-referrer"><p id="cutscene-text"></p></div>
+</div>
 <script>
+  // BGM은 사용자의 클릭으로만 시작하고, 메인 화면을 떠날 때 iframe을 제거합니다.
+  const bgmButton = document.getElementById('bgm-button');
+  const bgmPlayer = document.getElementById('bgm-player');
+  function stopBgm() { bgmPlayer.replaceChildren(); bgmButton.textContent = 'BGM 켜기'; bgmButton.setAttribute('aria-pressed', 'false'); }
+  bgmButton.addEventListener('click', () => {
+    if (bgmPlayer.firstChild) { stopBgm(); return; }
+    const frame = document.createElement('iframe');
+    frame.className = 'bgm-frame'; frame.title = '메인 화면 배경음악';
+    frame.allow = 'autoplay; encrypted-media';
+    frame.src = 'https://www.youtube.com/embed/jMLf7hWQ6JM?autoplay=1&loop=1&playlist=jMLf7hWQ6JM&playsinline=1';
+    bgmPlayer.appendChild(frame); bgmButton.textContent = 'BGM 끄기'; bgmButton.setAttribute('aria-pressed', 'true');
+  });
+  const cutscenes = {
+    2: { image: 'cutscene-1.jpg', text: '실수하지 말라고 소년' },
+    1: { image: 'cutscene-2.webp', text: '이제 한 목숨 남았으니 조심하는게 좋을거야 BOY~' },
+    0: { image: 'cutscene-3.jpg', text: 'Hey~ Boy~ 조심하라고 했지~ 일로와' }
+  };
+  async function showCutscene(lives) {
+    const overlay = document.getElementById('cutscene');
+    const image = document.getElementById('cutscene-image');
+    image.hidden = false;
+    image.onerror = () => { image.hidden = true; };
+    image.src = cutscenes[lives].image;
+    document.getElementById('cutscene-text').textContent = cutscenes[lives].text;
+    overlay.hidden = false;
+    await sleep(2000);
+    overlay.hidden = true;
+  }
   // 단계별 수정구 수, 섞는 횟수, 한 번 교차하는 시간(ms).
   const levels = [
     { count: 3, swaps: 4, duration: 700 },
     { count: 5, swaps: 7, duration: 500 },
-    { count: 10, swaps: 11, duration: 320 }
+    { count: 10, swaps: 20, duration: 120 }
   ];
   const state = { level: 0, lives: 3, target: 0, orbs: [], accepting: false, round: 0 };
   const screens = document.querySelectorAll('.screen');
@@ -74,7 +118,7 @@
   const message = document.getElementById('message');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  function showScreen(id) { screens.forEach(screen => { screen.hidden = screen.id !== id; }); }
+  function showScreen(id) { if (id !== 'main-screen') stopBgm(); screens.forEach(screen => { screen.hidden = screen.id !== id; }); }
   function setStatus(text) { message.textContent = text; }
   function updateHeader() {
     document.getElementById('stage').textContent = `${state.level + 1}단계`;
@@ -154,7 +198,7 @@
     state.orbs.forEach(orb => { orb.el.disabled = false; });
     state.accepting = true; setStatus('별빛이 담긴 수정구를 선택하세요!');
   }
-  function choose(orb) {
+  async function choose(orb) {
     if (!state.accepting) return;
     state.accepting = false;
     state.orbs.forEach(item => { item.el.disabled = true; });
@@ -163,6 +207,7 @@
       state.level++; runRound('정답! 다음 단계입니다.');
     } else {
       state.lives--; updateHeader();
+      await showCutscene(state.lives);
       if (state.lives === 0) { showScreen('game-over'); return; }
       runRound('아쉬워요! 같은 단계에서 다시 도전합니다.');
     }
