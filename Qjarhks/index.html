@@ -4,115 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>치매예방 틀린그림찾기</title>
-
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-    }
-
-    /* 모든 버튼의 공통 디자인 */
+    body { margin: 0; font-family: sans-serif; }
     button {
-      border: none;
-      border-radius: 999px;
-      padding: 12px 28px;
-      font-size: 18px;
-      cursor: pointer;
+      border: none; border-radius: 999px; padding: 12px 28px;
+      font-size: 18px; cursor: pointer;
       transition: background-color 0.2s, transform 0.2s;
     }
-
-    button:hover {
-      transform: translateY(-2px);
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    button:focus-visible { outline: 3px solid #315a9b; outline-offset: 3px; }
+    #start-button, #game-start-button, .difficulty-button {
+      min-width: 140px; background-color: #dcecff; color: #23446e;
     }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    button:focus-visible {
-      outline: 3px solid #315a9b;
-      outline-offset: 3px;
-    }
-
-    /* 시작 버튼과 난이도 버튼 */
-    #start-button,
-    .difficulty-button {
-      min-width: 140px;
-      background-color: #dcecff;
-      color: #23446e;
-    }
-
-    #start-button:hover,
-    .difficulty-button:hover {
+    #start-button:hover, #game-start-button:hover, .difficulty-button:hover {
       background-color: #c6e0ff;
     }
-
-    /* 뒤로가기 버튼 */
     .back-button {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      padding: 10px 20px;
-      background-color: #eeeeee;
-      color: #333333;
-      font-size: 16px;
+      position: fixed; top: 16px; left: 16px; padding: 10px 20px;
+      background-color: #eeeeee; color: #333333; font-size: 16px;
     }
-
-    .back-button:hover {
-      background-color: #dddddd;
+    .back-button:hover { background-color: #dddddd; }
+    #main-screen, #ready-screen, #game-screen {
+      flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; box-sizing: border-box; text-align: center;
     }
-
-    /* 메인 화면 */
-    #main-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-
-    /* 난이도 선택 화면 */
+    #main-screen { display: flex; }
+    #ready-screen, #game-screen { display: none; padding: 80px 16px 24px; }
     #difficulty-screen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      box-sizing: border-box;
-      padding-top: 33vh;
+      display: none; flex-direction: column; align-items: center;
+      min-height: 100vh; box-sizing: border-box; padding-top: 33vh;
     }
-
-    #difficulty-screen h2 {
-      margin: 0 0 16px;
+    #difficulty-screen h2 { margin: 0 0 16px; }
+    .difficulty-buttons { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    #timer { position: fixed; top: 20px; right: 20px; font-size: 24px; font-weight: bold; }
+    #game-container {
+      display: grid; gap: 4px; width: min(80vw, 60vh, 500px); aspect-ratio: 1;
     }
-
-    .difficulty-buttons {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* 게임 화면 */
-    #game-screen {
-      display: none;
-    }
+    .game-cell { border: 1px solid #aab4c1; min-width: 0; min-height: 0; }
   </style>
 </head>
 <body>
-  <!-- 1. 메인 화면 -->
   <div id="main-screen">
     <h1>치매예방 틀린그림찾기</h1>
     <button type="button" id="start-button">시작</button>
   </div>
 
-  <!-- 2. 난이도 선택 화면 -->
   <div id="difficulty-screen">
-    <button type="button" id="back-to-main" class="back-button">
-      뒤로가기
-    </button>
-
+    <button type="button" id="back-to-main" class="back-button">뒤로가기</button>
     <h2>난이도를 선택하세요</h2>
-
     <div class="difficulty-buttons">
       <button type="button" class="difficulty-button" data-level="하">하</button>
       <button type="button" class="difficulty-button" data-level="중">중</button>
@@ -120,55 +60,92 @@
     </div>
   </div>
 
-  <!-- 3. 게임 화면 -->
-  <div id="game-screen">
-    <button type="button" id="back-to-difficulty" class="back-button">
-      뒤로가기
-    </button>
+  <div id="ready-screen">
+    <button type="button" id="back-to-difficulty" class="back-button">뒤로가기</button>
+    <h2>준비되었으면 시작버튼을 눌러주세요</h2>
+    <button type="button" id="game-start-button">게임 시작</button>
+  </div>
 
-    <div id="game-container"></div>
+  <div id="game-screen">
+    <button type="button" id="back-to-ready" class="back-button">뒤로가기</button>
+    <div id="timer" role="timer" aria-label="남은 시간">00:00</div>
+    <div id="game-container" aria-label="게임 격자"></div>
   </div>
 
   <script>
     const mainScreen = document.getElementById("main-screen");
     const difficultyScreen = document.getElementById("difficulty-screen");
+    const readyScreen = document.getElementById("ready-screen");
     const gameScreen = document.getElementById("game-screen");
-
-    const startButton = document.getElementById("start-button");
-    const difficultyButtons = document.querySelectorAll(".difficulty-button");
-    const backToMainButton = document.getElementById("back-to-main");
-    const backToDifficultyButton = document.getElementById("back-to-difficulty");
-
-    // 추후 게임 로직에서 사용할 선택 난이도
+    const gameContainer = document.getElementById("game-container");
+    const timer = document.getElementById("timer");
+    const settings = {
+      "하": { size: 3, seconds: 180 },
+      "중": { size: 4, seconds: 120 },
+      "상": { size: 5, seconds: 60 }
+    };
     let selectedLevel = null;
+    let timerId = null;
 
-    // 메인 화면 → 난이도 선택 화면
-    startButton.addEventListener("click", function () {
-      mainScreen.style.display = "none";
-      difficultyScreen.style.display = "flex";
+    function showScreen(screen) {
+      [mainScreen, difficultyScreen, readyScreen, gameScreen].forEach(function (item) {
+        item.style.display = item === screen ? "flex" : "none";
+      });
+    }
+
+    function stopTimer() {
+      clearInterval(timerId);
+      timerId = null;
+    }
+
+    function displayTime(seconds) {
+      const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const remainingSeconds = String(seconds % 60).padStart(2, "0");
+      timer.textContent = minutes + ":" + remainingSeconds;
+    }
+
+    function startGame() {
+      const config = settings[selectedLevel];
+      if (!config) return;
+      stopTimer();
+      gameContainer.replaceChildren();
+      gameContainer.style.gridTemplateColumns = `repeat(${config.size}, 1fr)`;
+      gameContainer.style.gridTemplateRows = `repeat(${config.size}, 1fr)`;
+      for (let i = 0; i < config.size * config.size; i++) {
+        const cell = document.createElement("div");
+        cell.className = "game-cell";
+        gameContainer.appendChild(cell);
+      }
+      showScreen(gameScreen);
+      const endTime = Date.now() + config.seconds * 1000;
+      displayTime(config.seconds);
+      timerId = setInterval(function () {
+        const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+        displayTime(remaining);
+        if (remaining === 0) stopTimer();
+      }, 1000);
+    }
+
+    document.getElementById("start-button").addEventListener("click", function () {
+      showScreen(difficultyScreen);
     });
-
-    // 난이도 선택 화면 → 게임 화면
-    difficultyButtons.forEach(function (button) {
+    document.querySelectorAll(".difficulty-button").forEach(function (button) {
       button.addEventListener("click", function () {
         selectedLevel = button.dataset.level;
-
-        difficultyScreen.style.display = "none";
-        gameScreen.style.display = "block";
+        showScreen(readyScreen);
       });
     });
-
-    // 난이도 선택 화면 → 메인 화면
-    backToMainButton.addEventListener("click", function () {
-      difficultyScreen.style.display = "none";
-      mainScreen.style.display = "flex";
+    document.getElementById("game-start-button").addEventListener("click", startGame);
+    document.getElementById("back-to-main").addEventListener("click", function () {
+      showScreen(mainScreen);
     });
-
-    // 게임 화면 → 난이도 선택 화면
-    backToDifficultyButton.addEventListener("click", function () {
-      gameScreen.style.display = "none";
-      difficultyScreen.style.display = "flex";
+    document.getElementById("back-to-difficulty").addEventListener("click", function () {
       selectedLevel = null;
+      showScreen(difficultyScreen);
+    });
+    document.getElementById("back-to-ready").addEventListener("click", function () {
+      stopTimer();
+      showScreen(readyScreen);
     });
   </script>
 </body>
