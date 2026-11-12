@@ -48,14 +48,14 @@
   .cutscene-card img { display: block; width: 100%; max-height: 55vh; object-fit: contain; margin-bottom: 18px; -webkit-mask-image: radial-gradient(ellipse 74% 75% at center, #000 54%, transparent 100%); mask-image: radial-gradient(ellipse 74% 75% at center, #000 54%, transparent 100%); }
   .cutscene-card p { font-size: 1.25rem; font-weight: bold; text-shadow: 0 2px 12px #000, 0 0 20px #000; }
   #game-over { isolation: isolate; overflow: hidden; }
-  #game-over-image { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: final-zoom 5s ease-out forwards; }
-  #game-over::before { content: ''; position: absolute; z-index: -1; inset: 0; background: #08031b99; }
+  #game-over-video { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: final-zoom 5s ease-out forwards; }
+  #game-over::before { content: ''; position: absolute; z-index: -1; inset: 0; background: #08031b30; }
   #game-over .menu-button { position: absolute; right: max(24px, env(safe-area-inset-right)); bottom: max(24px, env(safe-area-inset-bottom)); background: #ffffff1a; border: 1px solid #ffffff80; color: white; backdrop-filter: blur(6px); text-shadow: 0 1px 5px #000; }
   #game-over .menu-button:hover { background: #ffffff38; }
   @keyframes final-zoom { from { transform: scale(1); } to { transform: scale(1.3); } }
   .hint { color: #c5b4e5; font-size: .9rem; }
   @media (max-width: 500px) { .screen { padding: 18px; } .character { height: 160px; } .board { height: 190px; } }
-  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before, #game-over-image, .orb.selected { animation: none; } .cutscene, .cutscene-card { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before, #game-over-video, .orb.selected { animation: none; } .cutscene, .cutscene-card { transition: none; } }
 </style>
 </head>
 <body>
@@ -77,7 +77,7 @@
     <p class="hint">빛나는 수정구를 기억하고 셔플이 끝나면 선택하세요.</p>
   </div>
 </section>
-<section id="game-over" class="screen center" hidden><img id="game-over-image" src="cutscene-4.jpg" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true"><button id="back-to-main" class="primary menu-button" type="button">시작화면</button></section>
+<section id="game-over" class="screen center" hidden><video id="game-over-video" src="game-over-video.mp4" preload="auto" playsinline loop aria-label="게임 오버 영상"></video><button id="video-play" class="primary" type="button" hidden>영상 재생</button><button id="back-to-main" class="primary menu-button" type="button">시작화면</button></section>
 <section id="victory" class="screen center" hidden><h1>게임 클리어 ✦</h1><p>모든 별빛 수정구를 찾았어요!</p><button class="primary restart" type="button">다시 시작</button></section>
 <div id="cutscene" class="cutscene" hidden role="dialog" aria-modal="true" aria-labelledby="cutscene-text">
   <div class="cutscene-card"><img id="cutscene-image" alt="실패 컷신" referrerpolicy="no-referrer"><p id="cutscene-text"></p></div>
@@ -143,7 +143,37 @@
   const message = document.getElementById('message');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  function showScreen(id) { stopBgm(); screens.forEach(screen => { screen.hidden = screen.id !== id; }); if (id === 'game-over') playBgm('CCemLrJPHpY'); }
+  const gameOverVideo = document.getElementById('game-over-video');
+  function showScreen(id) {
+    stopBgm();
+    gameOverVideo.pause();
+    if (id !== 'game-over') gameOverVideo.currentTime = 0;
+    screens.forEach(screen => { screen.hidden = screen.id !== id; });
+    if (id === 'game-over') {
+      document.getElementById('video-play').hidden = true;
+      gameOverVideo.currentTime = 0;
+      gameOverVideo.play().catch(() => { document.getElementById('video-play').hidden = false; });
+    }
+  }
+  // Web Audio로 짧은 클릭과 정답/오답 효과음을 합성합니다.
+  let soundContext;
+  function playEffect(kind) {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      soundContext ||= new AudioContextClass();
+      if (soundContext.state === 'suspended') soundContext.resume().catch(() => {});
+      const ctx = soundContext, now = ctx.currentTime;
+      const notes = kind === 'correct' ? [660, 880] : kind === 'wrong' ? [300, 200] : [520];
+      notes.forEach((frequency, index) => {
+        const at = now + index * .09, osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(frequency, at);
+        gain.gain.setValueAtTime(.0001, at); gain.gain.exponentialRampToValueAtTime(.055, at + .015);
+        gain.gain.exponentialRampToValueAtTime(.0001, at + .14);
+        osc.connect(gain); gain.connect(ctx.destination); osc.start(at); osc.stop(at + .15);
+      });
+    } catch (_) { /* 효과음이 실패해도 게임은 계속됩니다. */ }
+  }
   function setStatus(text) { message.textContent = text; }
   function updateHeader() {
     document.getElementById('stage').textContent = `${state.level + 1}단계`;
@@ -227,12 +257,15 @@
     if (!state.accepting) return;
     state.accepting = false;
     state.orbs.forEach(item => { item.el.disabled = true; });
+    playEffect('click');
     orb.el.classList.add('selected');
     await sleep(300);
     if (orb.id === state.target) {
+      playEffect('correct');
       if (state.level === levels.length - 1) { showScreen('victory'); return; }
       state.level++; runRound('정답! 다음 단계입니다.');
     } else {
+      playEffect('wrong');
       state.lives--; updateHeader();
       await showCutscene(state.lives);
       if (state.lives === 0) { showScreen('game-over'); return; }
@@ -241,12 +274,14 @@
   }
   function startGame() { state.level = 0; state.lives = 3; showScreen('game-screen'); runRound(); }
   document.getElementById('start').addEventListener('click', startGame);
+  document.getElementById('video-play').addEventListener('click', () => { gameOverVideo.play().then(() => { document.getElementById('video-play').hidden = true; }).catch(() => {}); });
   document.getElementById('back-to-main').addEventListener('click', () => { showScreen('main-screen'); startBgm(); });
   document.querySelectorAll('.restart').forEach(button => button.addEventListener('click', startGame));
   window.addEventListener('resize', () => { if (state.accepting) renderPositions(); });
 </script>
 </body>
 </html>
+
 
 
 
