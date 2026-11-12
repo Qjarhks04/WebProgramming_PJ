@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>야바위 게임</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: sans-serif; background: #171717; color: white; }
+    .screen { min-height: 100vh; padding: 24px; }
+    .screen[hidden] { display: none; }
+    .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+    button { padding: 12px 20px; border: 0; border-radius: 8px; font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #ffd166; outline-offset: 4px; }
+    .game-header { display: flex; justify-content: space-between; gap: 16px; max-width: 800px; margin: 0 auto; }
+    .game-content { max-width: 800px; margin: 10vh auto 0; text-align: center; }
+    .cups { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 32px 0; }
+    .cup { width: 80px; height: 90px; background: #b77940; color: white; font-size: 1.4rem; }
+    .cup:hover { background: #d59455; }
+    #message { min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <!-- 나중에 이 화면에 동영상 배경을 추가할 수 있습니다. -->
+  <main id="main-screen" class="screen center">
+    <button id="start-button" type="button">계속하기</button>
+  </main>
+
+  <section id="game-screen" class="screen" hidden aria-label="게임 화면">
+    <header class="game-header">
+      <strong id="stage-display"></strong>
+      <strong id="lives-display"></strong>
+    </header>
+    <div class="game-content">
+      <h1>공이 숨은 컵을 찾아보세요!</h1>
+      <p id="message" role="status" aria-live="polite"></p>
+      <div id="cups" class="cups" aria-label="컵 선택"></div>
+    </div>
+  </section>
+
+  <section id="game-over-screen" class="screen center" hidden>
+    <h1>게임 오버</h1>
+    <p>목숨을 모두 잃었습니다.</p>
+    <button id="restart-button" type="button">다시 시작</button>
+  </section>
+
+  <section id="victory-screen" class="screen center" hidden>
+    <h1>게임 클리어!</h1>
+    <p>모든 단계를 통과했습니다.</p>
+    <button id="play-again-button" type="button">다시 시작</button>
+  </section>
+
+  <script>
+    const cupCounts = [3, 5, 10];
+    const initialLives = 3;
+    const state = { stage: 0, lives: initialLives, answer: 0 };
+    const screens = document.querySelectorAll('.screen');
+    const stageDisplay = document.getElementById('stage-display');
+    const livesDisplay = document.getElementById('lives-display');
+    const message = document.getElementById('message');
+    const cups = document.getElementById('cups');
+
+    function showScreen(id) {
+      screens.forEach(screen => { screen.hidden = screen.id !== id; });
+    }
+
+    function prepareRound(feedback = '컵 하나를 선택하세요.') {
+      const count = cupCounts[state.stage];
+      state.answer = Math.floor(Math.random() * count);
+      stageDisplay.textContent = `${state.stage + 1}단계`;
+      livesDisplay.textContent = `남은 목숨: ${state.lives}개`;
+      message.textContent = feedback;
+      cups.replaceChildren();
+      for (let i = 0; i < count; i++) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cup';
+        button.textContent = '🥤';
+        button.setAttribute('aria-label', `${i + 1}번 컵`);
+        button.addEventListener('click', () => chooseCup(i));
+        cups.appendChild(button);
+      }
+    }
+
+    function chooseCup(index) {
+      if (index === state.answer) {
+        if (state.stage === cupCounts.length - 1) {
+          showScreen('victory-screen');
+        } else {
+          state.stage++;
+          prepareRound('정답입니다! 다음 단계의 컵을 선택하세요.');
+        }
+      } else {
+        state.lives--;
+        if (state.lives === 0) {
+          showScreen('game-over-screen');
+        } else {
+          prepareRound('틀렸습니다. 같은 단계에서 다시 시도하세요.');
+        }
+      }
+    }
+
+    function startGame() {
+      state.stage = 0;
+      state.lives = initialLives;
+      prepareRound();
+      showScreen('game-screen');
+    }
+
+    document.getElementById('start-button').addEventListener('click', startGame);
+    document.getElementById('restart-button').addEventListener('click', startGame);
+    document.getElementById('play-again-button').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
