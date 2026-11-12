@@ -14,6 +14,7 @@
     button:focus-visible { outline: 3px solid #ffd166; outline-offset: 4px; }
     .game-header { display: flex; justify-content: space-between; gap: 16px; max-width: 800px; margin: 0 auto; }
     .game-content { max-width: 800px; margin: 10vh auto 0; text-align: center; }
+    .game-video { display: block; width: min(100%, 480px); max-height: 40vh; margin: 0 auto 24px; object-fit: contain; }
     .cups { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 32px 0; }
     .cup { width: 80px; height: 90px; background: #b77940; color: white; font-size: 1.4rem; }
     .cup:hover { background: #d59455; }
@@ -32,6 +33,10 @@
       <strong id="lives-display"></strong>
     </header>
     <div class="game-content">
+      <video class="game-video" autoplay loop muted playsinline aria-label="아디나 영상">
+        <source src="https://i3.ruliweb.com/ori/24/04/19/18ef4ef215f3ad509.mp4?gif" type="video/mp4">
+        브라우저에서 영상을 재생할 수 없습니다.
+      </video>
       <h1>공이 숨은 컵을 찾아보세요!</h1>
       <p id="message" role="status" aria-live="polite"></p>
       <div id="cups" class="cups" aria-label="컵 선택"></div>
