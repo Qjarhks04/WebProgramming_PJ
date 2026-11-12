@@ -11,6 +11,11 @@
   body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .55; background-image: radial-gradient(2px 2px at 15% 20%, white 50%, transparent 70%), radial-gradient(2px 2px at 73% 30%, #d9c4ff 50%, transparent 70%), radial-gradient(1px 1px at 42% 72%, white 50%, transparent 70%); background-size: 230px 220px, 300px 270px, 180px 190px; }
   .screen { position: relative; min-height: 100vh; padding: 24px; }
   .screen[hidden] { display: none; }
+  #main-screen { overflow: hidden; isolation: isolate; }
+  #main-screen::before { content: ''; position: absolute; z-index: -2; inset: -3%; background: url('adina-background.jpg') center / cover no-repeat; animation: drift 9s ease-in-out infinite alternate; }
+  #main-screen::after { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, #090c2540, #090c2590); }
+  #main-screen h1, #main-screen p { text-shadow: 0 2px 12px #080817; }
+  @keyframes drift { from { transform: scale(1.04) translate(-.5%, -.3%); } to { transform: scale(1.08) translate(.5%, .3%); } }
   .center { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }
   h1, p { margin: 0; }
   h1 { letter-spacing: .04em; }
@@ -25,14 +30,14 @@
   @keyframes glow { 50% { box-shadow: 0 0 60px 15px #e5c0ff99; transform: scale(1.03); } }
   #message { min-height: 3em; margin: 14px 0 0; color: #e5d5fa; }
   .board { position: relative; width: 100%; height: 220px; margin: 0 auto; }
-  /* 실제 수정구 이미지는 .orb의 background를 url('이미지경로') center/contain no-repeat로 교체하세요. */
-  .orb { position: absolute; left: 0; top: 0; width: var(--orb-size); height: var(--orb-size); border-radius: 50%; border: 1px solid #e2c7ff; cursor: pointer; color: #fff; font: inherit; font-weight: bold; background: radial-gradient(circle at 32% 25%, #fff, #d5baffbb 12%, #986bdfbb 34%, #473390dd 66%, #251e60 100%); box-shadow: inset -8px -10px 18px #140c4988, 0 0 20px #a77bff99; transition: transform var(--duration, 0ms) ease-in-out, opacity .5s ease; will-change: transform; }
+  /* 수정구 이미지 파일을 교체하려면 아래 crystal-orb.png 경로를 변경하세요. */
+  .orb { position: absolute; left: 0; top: 0; width: var(--orb-size); height: var(--orb-size); border-radius: 50%; border: 1px solid #e2c7ff; cursor: pointer; color: #fff; font: inherit; font-weight: bold; background: transparent url("crystal-orb.png") center / contain no-repeat; box-shadow: inset -8px -10px 18px #140c4988, 0 0 20px #a77bff99; transition: transform var(--duration, 0ms) ease-in-out, opacity .5s ease; will-change: transform; }
   .orb:disabled { cursor: default; }
   .orb.target { box-shadow: inset -8px -10px 18px #140c4988, 0 0 0 4px #ffdc94, 0 0 30px #ffc962; }
   .orb.target::after { content: '✦'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff3bd; font-size: 1.7rem; text-shadow: 0 0 10px #fff; }
   .hint { color: #c5b4e5; font-size: .9rem; }
   @media (max-width: 500px) { .screen { padding: 18px; } .character { height: 160px; } .board { height: 190px; } }
-  @media (prefers-reduced-motion: reduce) { .character.swallow { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .character.swallow, #main-screen::before { animation: none; } }
 </style>
 </head>
 <body>
